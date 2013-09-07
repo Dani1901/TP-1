@@ -1,85 +1,119 @@
-#include <netinet/in.h>
+//Se importan las librerias
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
+void comunicacion(int);
 
+//Funcion que se invoca cuando ocurre un error
+void error(const char *msg)             
+{
+	perror(msg);                         
+	exit(1);
+}
 
+//Funcion main
+int main(int argc, char *argv[])
+{
+	//Declaracion de variables
+	int socket1, nuevoSocket, numPuerto, pid;   
+	socklen_t clilen;
+	struct sockaddr_in dir_servidor, dir_cliente;      //Reserva espacio en memoria
+	
 
-int main(int argc, char *argv[]){
-    
-    if(argc != 2){
-        printf("\n Uso: %s <port> \n",argv[0]);
-        return 1;
+    //Verifica que exista un numero de puerto
+	if (argc < 2)
+	{
+		fprintf(stderr,"ERROR, no hay ningún puerto\n");
+		exit(1);
+	}
+	//Se crea define el socket
+	socket1 = socket(AF_INET, SOCK_STREAM, 0);
+	
+	//validacion en caso de no se pueda establecer el socket
+	if (socket1 < 0)
+		error("ERROR de apertura de socket");
+
+    //Establece los valores del bufer a 0
+	bzero((char *) &dir_servidor, sizeof(dir_servidor));
+	//numPuerto obtine el numero de puerto ingresado por el usuario
+	numPuerto = atoi(argv[1]);
+	
+	dir_servidor.sin_family = AF_INET;                  //Protocolo TCP
+	dir_servidor.sin_addr.s_addr = INADDR_ANY;          //Representa la direccion ip
+	dir_servidor.sin_port = htons(numPuerto);           //Representa el puerto
+
+	//Verifica la conexion
+	if (bind(socket1, (struct sockaddr *) &dir_servidor,sizeof(dir_servidor)) < 0)
+		error("ERROR en la conexión");
+	
+	//Habilita al socket a recibir peticiones seran almacenadas en una cola
+	listen(socket1,5);
+	
+	//Tamaño de bytes que ocupa la direccion cliente
+	clilen = sizeof(dir_cliente);
+
+    //Se crea un ciclo infinito para que el servidor quede en espera de peticiones
+	while (1)
+	{
+		//Acepta las solicitudes que esten en la cola
+		nuevoSocket = accept(socket1,(struct sockaddr *) &dir_cliente, &clilen);
+		
+		//Valida que no exista error en aceptar 
+		if (nuevoSocket < 0)
+			error("ERROR en aceptar");
+		
+		//Se le asigna un id de proceso al fork
+		pid = fork();
+		//Si el id es menor a cero muestra un error en el fork
+		if (pid < 0)
+			error("ERROR en fork");
+		
+		//Si el id es igual a 0 se cierra el socket y se abre una nueva comunicacion
+		if (pid == 0)
+		{
+			close(socket1);
+			comunicacion(nuevoSocket);
+			exit(0);
 		}
-    
-/*~~~~~~~~~~Declaracion de variables~~~~~~~~~~*/
-  
-    char BUFFER2[4096];	//Buffer que se utilizara para enviar cada uno de los datos del lfile.		
-    int socketfd, clientfd;	//socket del server y del cliente
-    struct sockaddr_in serv_addr, client_addr;  		//struct para almacenar la info del socket del server y del cliente
-	socklen_t client_addr_len;				//longitud del struct del socket del cliente
-    FILE * recv_file;
-    char *filename = "recibido.txt";
-	int x; 
-	    
-    if((socketfd = socket(AF_INET, SOCK_STREAM, 0))<0){				//CREACION DEL SOCKET DEL SERVIDOR	
-		fprintf(stderr,"Error: No se pudo crear el sockets");
-		close(socketfd);
-		return 1;
-		}
 		
-	printf("\nSe ha creado el socket.");
-    scanf("%d",&x);
-    
-    serv_addr.sin_family = AF_INET;                          //LLENMOS LA ESTRUCTURA DEL SOCKET DEL SERVIDOR
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);       //CON INFORMACION, como el IPv4, el PRotocolo y el puerto
-    serv_addr.sin_port = htons(atoi(argv[1])); 
+		else
+		// Si es mayor a 0 se cierra la comunicacion
+			close(nuevoSocket);
+	}
+	close(socket1);
+	return 0;
+}
 
-    if( (bind(socketfd, (struct sockaddr*)&serv_addr, sizeof(struct sockaddr_in)))<0){			//Enlazamos el FD con el struct
-		fprintf(stderr, "Error binding");
-		close(socketfd);
-		return 1;
-		} 
-	printf("\nSe ha enlazado el socket");
-	scanf("%d",&x);
+//Se encarga de las comunicaciones despues de establecida la conexion
+void comunicacion (int sock)
+{
+	//Declaracion de variables
+	int mensaje;
+	char buffer[256];       
 	
-    listen(socketfd, 5); 			//ponemos el socket del servidor a escuchar
-        
-    client_addr_len = sizeof(client_addr);     //obtenemos el tamaño del struct del cliente 
+	//Rellena con ceros
+	bzero(buffer,256);
 	
-	if((clientfd = accept(socketfd, (struct sockaddr *) &client_addr, &client_addr_len))<0){//aceptamos las conexiones entrantes
-		printf("Cannot accept connection\n");
-	    close(socketfd);
-	    return 1;
-		}
+	//Lee el mensaje
+	mensaje = read(sock,buffer,255);
 	
-	printf("\nSe ha aceptado la conexion");
-	scanf("%d",&x);
-		
-		recv_file = fopen ( filename,"w" );	//abrimos el archivo en el que el servidor va a escribir los datos que le vaya a mandar el cliente
-		
-		//CICLO en el que el servidor va a recibir los datos del cliente uno por uno y los va a escribir en recv_file
-		while(1){
-			
-			if( recv(clientfd, BUFFER2, 1, 0) != 0 ) {		//Recibe un byte del cliente
-				fwrite (BUFFER2 , sizeof(BUFFER2[0]) , 1 , recv_file );	//lo escribe en recv_file
-				BUFFER2[0] = 0;
-				printf("\nRecibido");
-			}// if interno 
-			
-			else {
-				close(socketfd);
-				fclose(recv_file);
-				printf("\nSe ha cerrado el socket\n");
-				return 1;		
-				}
-				
-			}//while interno
-		
-		close(socketfd);
-	    return 0;
+	//Muestra el error en caso de que se produzca
+	if (mensaje < 0)
+		error("ERROR al leer del socket");
 	
-	}//:~~~~
+	//Muestra el mensaje recibido
+	printf("Aquí está el mensaje: %s\n",buffer);
+	mensaje = write(sock,"Tengo el mensaje",18);
+	
+	
+	//Si no puede leer el msj muestra el error
+	if (mensaje < 0)
+		error("ERROR al escribir en el socket");
+	
+	}
+
