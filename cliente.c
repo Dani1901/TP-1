@@ -1,79 +1,93 @@
-#include <netinet/in.h>
+//Se importan las librerias
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <arpa/inet.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
+//Funcion que invoca si ocurre un error
+void error(const char *msg) 
+{
+	perror(msg);
+	exit(0);
+}
 
-int main( int argc, char *argv[]){
+//Funcion main recibe ip 
+int main(int argc, char *argv[]) {
+	//Declaracion de variables
+	int socket1, numPuerto, mensaje;
+	struct sockaddr_in dir_servidor;             
+	struct hostent *servidor;
+	char buffer[256];
 	
-	if(argc != 3){
-        printf("\n Uso: %s <ip of server> <port> \n",argv[0]);
-        return 1; 
-    }
+	//Error que se muestra cuando los parametros son equivocados
+	if (argc < 3)
+	{
+	fprintf(stderr,"Los parametros de %s está equivocados\n", argv[0]);
+	exit(0);
+	}
+	
+	//Se guarda el numero de puerto
+	numPuerto = atoi(argv[2]);
+	
+	//Se crea el socket
+	socket1 = socket(AF_INET, SOCK_STREAM, 0);
+	
+	//Muestra error en caso de no poder crear el socket
+	if (socket1 < 0) error("ERROR de apertura de socket");
+	
+	//Obtiene la direccion ip del servidor
+	servidor = gethostbyname(argv[1]);
+	
+	//Si el servidor es nulo ,muestra el error 
+	if (servidor == NULL)
+	{
+		fprintf(stderr,"ERROR, no hay host \n");
+		exit(0);
+	}
+	
+	//Restablece el valor del buffer a 0
+	bzero((char *) &dir_servidor, sizeof(dir_servidor));
+	
+	dir_servidor.sin_family = AF_INET;                  //Protocolo TCP
     
-    int sockfd;									//FD del socket client
-	struct sockaddr_in serv_addr;				//struct del socket del server
-	FILE * file_to_send;						//(Puntero) Archivo a enviar
-	int ch;
-	char toSEND[1];
-	int x;
+    //Copia la direccion
+	bcopy((char *)servidor->h_addr,(char*)&dir_servidor.sin_addr.s_addr,servidor->h_length);
+	
+	dir_servidor.sin_port = htons(numPuerto);           //Representa el numero de puerto
+	
+	//Verifica que pueda establecer la conexion
+	if (connect(socket1,(struct sockaddr *)&dir_servidor,sizeof(dir_servidor)) < 0) 
+		error("ERROR de conexión");
+	
+	printf("Por favor, introduzca el mensaje:");
+	
+	//Relleno con ceros
+	bzero(buffer,256);
+	
+	//Lee el mensaje desde la entrada estandar
+	fgets(buffer,255,stdin);
+	
+	//Solicita escribir un mensaje
+	mensaje = write(socket1,buffer,strlen(buffer));
+	
+	//Si se produce un error al escribir el msj, se muestra el error
+	if (mensaje < 0)
+		error("ERROR al escribir en socket");
+	
+	//Relleno con ceros
+	bzero(buffer,256);
+	//Lee el mensaje
+	mensaje = read(socket1,buffer,255);
+	
+	//Si se produce un error al leer el msj, se muestra el error
+	if (mensaje < 0)
+		error("ERROR al leer del socket");
 
-	const char *lfile[200]; 					//Nombre del archivo a enviar "/home/yaxiri/Documentos/sockets/images.jpeg";
-	printf("Digte el nombre del archivo:\n");
-	scanf("%s",&lfile);
-	printf("%s",lfile);
-	
-	//  /home/yaxiri/Documentos/sockets/Hola.txt
-	
-	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){				//Creacion del socket
-       fprintf(stderr,"\n Error : Could not create socket \n");
-       return 1;
-		}
-	 printf("\nSe ha creado el socket");
-	 scanf("%d",&x);
-	
-	serv_addr.sin_family = AF_INET;									//Protocolo TCP, Tipo de datos STREAM
-    serv_addr.sin_port = htons(atoi(argv[2])); 						//Puerto remoto del servidor dentro del struct
-	
-	if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0){  		//Paso el IPv4 del servidor al struct
-        printf("\n inet_pton error occured\n");
-        return 1;
-		}
-    
-    if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){   //Conectar el cliente con el servidor
-       printf("\n Error : Connect Failed \n");
-       return 1;
-		}
-	
-	printf("\nSe ha realizado la conexion con el servidor");
-	scanf("%d",&x);
-	
-	file_to_send = fopen (lfile,"r");							//Abrir el archivo a enviar, ahora el file_To_send es el FD de lfile
-															   // y lo leo
-	if(!file_to_send){   					
-		 printf("Error opening file\n");
-	     close(sockfd);
-	     return 1;
-			}
-	
-	
-	else {				//SI NO HUBO ERROR A LA HORA DE ABRIR EL DOCUMENTO EMPEZAMOS EL PROCESO DE ENVIO
-	printf("\nSe ha abierto el archivo a enviar");		
-	scanf("%d",&x);
-	
-	//INICIO EL CILO DE ENVIO: ENVIAREMOS DATOS UNO POR UNO
-				
-			while((ch=getc(file_to_send))!=EOF){		//obtengo el dato
-				toSEND[0] = ch;						//lo almaceno en un array  toSEND = {0}
-				send(sockfd, toSEND, 1, 0);			//lo envio
-				printf("\nEnviado");
-				}//while
-			}
-			
-	    fclose(file_to_send);	
-	    close(sockfd);
-		printf("\nSe ha cerrado el socket\n");
-	    return 0;
-	}//~~~
+	printf("%s\n",buffer);
+	close(socket1);
+	return 0;
+}
