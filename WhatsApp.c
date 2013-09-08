@@ -7,7 +7,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <wait.h>
+#include <string.h>
+
+
+
+
 
 //Funcion que invoca si ocurre un error
 void error(const char *msg) 
@@ -16,21 +20,55 @@ void error(const char *msg)
 	exit(0);
 }
 
+int contar(char arreglo[]){
+	int cont =0;
+	while(arreglo[cont]!='\0'){
+		cont ++;
+	}
+	
+	return cont;
+}
+
+	void imprimir(char entrada[]){
+	int j =0;
+    for( j = 0; j<contar(entrada); j++) {
+        printf("%c ", entrada[j]);
+    }
+}
+
+
+
+
 //Funcion main
-int main(int argumentos, char *args[])
-{
+int sockets()
+{	
+	
+	char Ip[16]; 
+	char Puerto;
+	
+	printf("Digite la ip remota \n");
+	scanf("%s",&Ip);
+	
+	system("color 4"); 			
+	printf("Digite el número de puerto \n");
+	scanf("%s",&Puerto);			
+	
 	//Declaracion de variables
+	//printf("Paramentro de la ip--->");
+	//imprimir(&Ip); 
+	
 	int socket1, nuevoSocket, numPuerto, pid, mensaje;   
 	socklen_t clilen;
 	char buffer[256];
-
+/**
 	if (argumentos < 3)
 	{
 		fprintf(stderr,"Los parametros de %s está equivocados\n", args[0]);
 		exit(0);
 	}
-	
-	numPuerto = atoi(args[2]);
+	**/
+	numPuerto = atoi(&Puerto);
+	//printf("NUMERO DE PUERTO: %i\n",numPuerto);
 		
 	pid = fork();
 	
@@ -55,8 +93,12 @@ int main(int argumentos, char *args[])
 			//Muestra error en caso de no poder crear el socket
 			if (socket1 < 0) error("ERROR de apertura de socket");
 			
+			
+			//printf("IP %s",Ip);
+			
 			//Obtiene la direccion ip del servidor
-			servidor = gethostbyname(args[1]);
+			servidor = gethostbyname(Ip);
+			
 			
 			//Si el servidor es nulo ,muestra el error 
 			if (servidor == NULL)
@@ -162,4 +204,40 @@ int main(int argumentos, char *args[])
 	}
 	return 0;
 }
+
+	
+	
+	void Menu(){
+		printf("Bienvenidos  al Sistema de comunicacion \n OPCIONES:\n 1)ENVIAR MENSAJER\n 2)LISTA DE AMIGOS \n 3)AGREGAR AMIGOS \n");
+		//char* argumentos = malloc ( 21 * sizeof(char));
+		//char Ip; 
+		//char Puerto;
+		char opcion=0;
+		scanf("%c",&opcion);
+			switch(opcion){
+				case '1':
+				/**
+				printf("Digite la ip remota \n");
+				scanf("%s",&Ip);
+				imprimir (&Ip);
+				
+				printf("Digite el número de puerto \n");
+				scanf("%s",&Puerto);
+				imprimir (&Puerto);
+				**/
+				sockets();
+				break;
+				case '2':
+				break;
+				case '3':
+				break;
+}
+	}
+	
+	int main () {
+		
+		Menu ();
+		return 0;
+	}
+
 
