@@ -1,7 +1,47 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
- 
+# include <stdio.h>
+
+
+void imprimir(char ar1[]){
+int x=strlen(ar1);
+int i=0;
+for(i;i<x;i++){
+	printf("%c",ar1[i]);}
+}
+
+int contar(char arreglo[]){
+	int cont =0;
+	while(arreglo[cont]!='\0'){
+		cont ++;
+	}
+	return cont;
+}
+
+int Comparar(char arr1[],char arr2[]){
+	int x=strlen(arr1);
+	int y=strlen(arr2);
+	int cont=0; 
+	if(x!=y-1){
+		//printf("falso1");
+		return 0;
+	}
+	else{
+		while(cont+1!=x){
+			if (arr1[cont]!=arr2[cont]){
+				//printf("falso2");
+				return 0;
+							
+			}cont++;
+		} printf("es verdadero");
+		return 1;
+				
+	}
+}
+
+
+/***********************************************************************************************************/
+
+
 int escribir( ){
 	FILE * archivo;
 	char* users = "listaContactos.txt";//Apunta al archivo en memoria
@@ -28,48 +68,10 @@ int escribir( ){
 
 	
 	}
-	
-	
 
-	
-int contar(char arreglo[]){
-	int cont =0;
-	while(arreglo[cont]!='\0'){
-		cont ++;
-	}
-	
-	return cont;
-}
 
-int Comparar(char arreglo1[],char arreglo2[]){
-	int x = contar(arreglo1);
-	int y = contar(arreglo2);
-	int cont=0;
-	if (x!= y){
-		//printf("falso0");
-		return 1;	
-	}
-         	 		
-	while(cont!=x-1){
-		printf("%c, %c",arreglo1[cont],arreglo2[cont] );
-		if (arreglo1[cont]==arreglo2[cont]){
-			cont++;
-			printf("Si ");
-		}
-		else{
-			//printf("falso");
-		return 1;
-		}
-	}
-		//printf("verdadero");
-		return 0;
-		
-	}
-	
 
-	 
-	
- int lee(char usuario[]){
+int lee(char usuario[]){
 	 FILE *archivo;
 		
         char caracteres[30];
@@ -82,23 +84,25 @@ int Comparar(char arreglo1[],char arreglo2[]){
         if (archivo == NULL)
                 exit(1);
  
-        printf("\nEl contenido del archivo de prueba es \n\n");
+        
         while (feof(archivo) == 0)
         {
                 fgets(caracteres,30,archivo);
-				printf("%s",caracteres);
-                if(((Comparar(caracteres,usuario))==0)||(i>0)){
-					if(i==0){strcpy(user,caracteres);
-					printf("ajjajaja","%s",user);}
-					if(i==1)strcpy(caracteres,ip);
-					if(i==2)strcpy(caracteres,puerto);
-					}i++;
+                if(((Comparar(usuario,caracteres))==1)||(i>0)){
+					if(i==0)strcpy(user,caracteres);
+					imprimir(user);
+					if(i==1)strcpy(ip,caracteres);
+					imprimir(ip);
+					if(i==2){strcpy(puerto,caracteres);
+					i==0;
+					imprimir(puerto);
+					break;}
+					
+					i++;
+					}
         }
- 
         fclose(archivo);
         return 0;
-	 
-	 
 	 
 	 }
  
@@ -106,18 +110,12 @@ int Comparar(char arreglo1[],char arreglo2[]){
 
 
 
-int main(int argc, char *argv[]){
-	//char usuario[30];
-	//printf("Para: ");
-	//scanf("%c",&usuario);
+/************************************************************************************************************/
+main(){
+char var1[30];
+scanf("%s",&var1);
+lee(var1);
+//escribir();
 
-	//escribir();
-	/*******************************************/
-	char user[30];
-	printf("Introduzca usuario :");
-	scanf("%s",&user);
-	lee(user);
-	
-        
-			
-	}
+
+}
