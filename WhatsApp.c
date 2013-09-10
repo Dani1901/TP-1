@@ -1,29 +1,42 @@
+// Programa de envio y recepción de mensajes utilizando TCP/IP
 
-//Se importan las librerias
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <string.h>
+
+
+/********************Librerías utilizadas********************/
+
+#include <stdio.h>                    // Contiene declaraciones utilizadas para entrada y salida de datos
+#include <stdlib.h>                   // Libreria estándar en c, es utilizada en conversión de hileras
+#include <unistd.h>                   // Libreria que permite realizar llamadas al sistema en este caso el fork ()
+#include <string.h>                   // Contiene definiciones utilizadas para la manipulacion de cadenas de caracteres
+#include <sys/types.h>                // Contiene definiciones de estructuras que son utilizadas por la funcion socket
+#include <sys/socket.h>               // Contiene definiciones de estructuras que son utilizadas por la funcion socket
+#include <netinet/in.h>               // Contiene definiciones de constantes y estructuras que son necesarias para el uso de direcciones de dominion en internet
+#include <netdb.h>                    // Contiene definiciones de constantes y estructuras que son necesarias para el uso de direcciones de dominion en internet
+
+
+/********************Declaración de variable globales********************/
 
 char ip[16];
 char puerto[30];
 char IP [16];
-int Menu();
+int existe;
 
-// Copia la ip para eliminar el \0 
-void copiar(char ar1[], char ar2[]){
-int x=strlen(ar1);
-int i=0;
-while(i<x-1){
-	 ar2[i] = ar1[i];
-	 i++;
-	 }
-}
+/*********************Declaración de las funciones a utilizar******************/
+
+int Menu();
+int Comparar(char[],char[]);
+int Escribir();
+int ValidaContacto(char[]);
+void copiar(char[], char[]);
+int lee(char[]);
+int muestra();
+int sockets();
+
+// Inicialización del main
+int main () {
+	printf("\033[35m WHATSAPP EN C =)                 \n");
+	Menu ();
+	return 0;  }
 
 //Funcion que invoca si ocurre un error
 void error(const char *msg) 
@@ -32,92 +45,84 @@ void error(const char *msg)
 	exit(0);
 }
 
+// Función que despliega el menú en pantalla, se encuentra en un ciclo que termina solamente cuando se desea salir de programa
 
-	int lee(char usuario[]){
-	 FILE *archivo;
-		
-        char caracteres[30];
-        //static char user[30];
-       
-		int i=0;
-        archivo = fopen("listaContactos.txt","r");
- 
-        if (archivo == NULL)
-                exit(1);
- 
-        int existe;
-        while (feof(archivo) == 0)
-        {
-                fgets(caracteres,30,archivo);
-                if(((Comparar(usuario,caracteres))==1)||(i>0)){
-					//if(i==0)strcpy(user,caracteres);
-					if(i==1)strcpy(ip,caracteres);
-					if(i==2){strcpy(puerto,caracteres);
-					i=0;
-					existe = 1;
-					break;}
-					
-					i++;
-					}
-					
-        }
-        
-        
-        if (existe != 1) {
-        printf("El contacto no se encuentra, por favor agregue \n");
-        existe = 0;
-        Menu ();
-        }
-        
-        fclose(archivo);
-        return 0;
-	 
-	 }
+int Menu(){
+	printf("\033[0m                Menú principal                  \n Opciones:\n 1)ENVIAR MENSAJES\n 2)LISTA DE AMIGOS \n 3)AGREGAR AMIGOS \n Digite 0 para salir del programa\n");
+	int salir=0;
+	int opcion;
+	while(salir==0){
+		opcion=-1;
+		fflush(stdin);
+		scanf("%d",&opcion);
+			
+		if (opcion==1){
+			system("clear");  // Se llama a la función sockets para crear la comunicación entre los nodos
+			sockets();
+			Menu();}
+		else if (opcion==2){
+			system("clear");
+			muestra();        // Se llama a la función mostrar para desplegar la lista de contactos que se posee
+			Menu();}
+		else if (opcion==3){
+			system("clear");
+			Escribir();      // En esta opción permite al usuario agregar amigos
+			Menu();}
+		else exit(0);
+		}
+	return 0;
+}
 
+// Función donde se da la comunicación entre los dos nodos
 
 int sockets()
 {	
-	char Usuario [30];
-	
-	printf("Digite el usuario \n");
+	char Usuario [30];	
+	printf("Digite el usuario \n");          // Se le solicita al usuario el username del contacto con el que desea cominicarse
 	scanf("%s",&Usuario);			
 		
-	lee(Usuario);
+	lee(Usuario);                            // Se llama a la función leer para validar que el usuario existe y a su vez nos devuelva la ip
+											 // y el puerto asociado
 	
-	int socket1, nuevoSocket, numPuerto, pid, mensaje;   
+	int socket1, nuevoSocket, numPuerto, mensaje,pid;   // Se declaran las variables necesarias para el socket
 	socklen_t clilen;
-	char buffer[1024]; // Tamaño del mensaje
+	char buffer[1024];                                  // Tamaño del mensaje
 	
-	numPuerto = atoi(puerto);
+	numPuerto = atoi(puerto);                           // Se convierte el numero de puerto a entero
 	
-	pid = fork();
+	pid = fork();                                       // Se guarda el id de proceso
+	
+	if (pid < 0){										// Error si el fork devuelve un -1 
+		error("El fork no se realizo de forma correcta\n");
+	}
 	
 	//Si el id es igual a 0 se cierra el socket y se abre una nueva comunicacion
-	if (pid == 0) // La parte del sockect que envía
+	if (pid == 0)                                       // La parte del sockect que envía
 	{
+				
+		struct sockaddr_in dir_servidor;                // Se declaran las estructuras donde se 
+		struct hostent *servidor;                       // guarda la ip del servidor
 		
-		struct sockaddr_in dir_servidor;             
-		struct hostent *servidor;
-		
-		while (1){
+		while (1){                                      // Se crea un while infinito
 			
 			sleep (1);
 			//Se crea el socket
 			socket1 = socket(AF_INET, SOCK_STREAM, 0);
 			
 			//Muestra error en caso de no poder crear el socket
-			if (socket1 < 0) error("ERROR de apertura de socket");
-			
+			if (socket1 < 0) error("El socket no se ha podido crear\n");
 			
 			//Obtiene la direccion ip del servidor
-			
-			copiar (ip, IP);
-			servidor = gethostbyname(IP);
+			if (existe == 1) {     // Si el usuario se encontraba en el archivo se llama a copiar para que elimine el \0
+				copiar (ip, IP);
+				servidor = gethostbyname(IP);
+				}
+			else servidor = gethostbyname(ip);
 			
 			//Si el servidor es nulo ,muestra el error 
 			if (servidor == NULL)
 			{
-				fprintf(stderr,"ERROR, no hay host \n");
+				fprintf(stderr,"Error, no se encuentra con quien conectar \n");
 				exit(0);
 			}
 			
@@ -133,10 +138,9 @@ int sockets()
 			
 			//Verifica que pueda establecer la conexion
 			if (connect(socket1,(struct sockaddr *)&dir_servidor,sizeof(dir_servidor)) < 0) 
-				error("ERROR de conexión clie");
+				error("Error, en crear la conexión");
 			
-			printf("\033[34m Yo: ");
-			
+			printf("\033[34m \n Yo: ");  // Es el printf que va indicar que le corresponde escribir
 			
 			//Relleno con ceros
 			bzero(buffer,1024);
@@ -149,11 +153,12 @@ int sockets()
 			mensaje = write(socket1,buffer,strlen(buffer));
 			//Si se produce un error al escribir el msj, se muestra el error
 			if (mensaje < 0)
-				error("ERROR al escribir en socket");
+				error("Error, no se pudo escribir el mensaje");
 			
-			if (strcmp(buffer,"salir\n")==0){
+			if (strcmp(buffer,"salir\n")==0){    // Si el usuario digita "salir" la conversación se da por finalizada
 				printf ("\033[31m Conversacion finalizada\n");
 				sleep(2);
+				system("clear");  // Limpia la pantalla
 				break;
 			}
 			
@@ -164,9 +169,9 @@ int sockets()
 			
 			//Si se produce un error al leer el msj, se muestra el error
 			if (mensaje < 0)
-				error("ERROR al leer del socket");
+				error("Error, no se puede leer el mensaje");
 				
-			printf("%s", buffer);
+			//printf("%s", buffer);
 			
 			close(socket1);
 	
@@ -176,14 +181,14 @@ int sockets()
 		
 	else {  //Servidor
 	
+		//printf("Entre al servidor");
 		
 		struct sockaddr_in dir_servidor, dir_cliente;
-		
 		socket1 = socket(AF_INET, SOCK_STREAM, 0);
 		
 		//validacion en caso de no se pueda establecer el socket
 		if (socket1 < 0)
-			error("ERROR de apertura de socket");
+			error("Error, no se puede crear el socket");
 
 		//Establece los valores del bufer a 0
 		bzero((char *) &dir_servidor, sizeof(dir_servidor));
@@ -195,7 +200,7 @@ int sockets()
 
 		//Verifica la conexion
 		if (bind(socket1, (struct sockaddr *) &dir_servidor,sizeof(dir_servidor)) < 0)
-			error("ERROR en la conexión");
+			error("Error, no se puede crear la conexión");
 		
 		while(1){
 			
@@ -204,36 +209,33 @@ int sockets()
 			//Tamaño de bytes que ocupa la direccion cliente
 			clilen = sizeof(dir_cliente);
 			
+			//Se cra una nueva comunicación
 			nuevoSocket = accept(socket1,(struct sockaddr *) &dir_cliente, &clilen);
 			if (nuevoSocket < 0)
-			error("ERROR en aceptar.....");
-			
+			error("Error, no se puede aceptar la conexión");
 						
 			bzero(buffer,256);
-			sleep (3);
+			sleep (2);
 			//Lee el mensaje
 			mensaje = read(nuevoSocket,buffer,255);
 			//Muestra el error en caso de que se produzca
 			if (mensaje < 0)
-				error("ERROR al leer del socket");
+				error("Error, al leer el mensaje enviado");
 			
 			if (strcmp(buffer,"salir\n")==0){
 				printf ("\033[33m Conversacion finalizada\n");
 				sleep(2);
-				//break;
+				Menu();
+				sleep(2);
 			}
 			
 			else{
 				//Muestra el mensaje recibido
-				printf("\033[32m %s:  %s\n",Usuario, buffer);
-				
-				mensaje= write (nuevoSocket,"",1);
-				if (mensaje< 0)
-				error("ERROR al escribir del socket");
-			}
+				printf("\033[32m \n %s:  %s\n",Usuario, buffer); //Muestra el mensaje enviado
+					}
 				
 				close(nuevoSocket);
-		}	
+				}	
 	}
 	return 0;
 }
@@ -244,13 +246,16 @@ int muestra( ){
     char caracteres[30];
     archivo = fopen("listaContactos.txt","r");//Almacena la dirección del archivo
     
-    if (archivo == NULL)   exit(1);
+    if (archivo == NULL)  {
+		 printf("\033[36m Usted aún no ha agregado ningun amigo\n");
+		 Menu();
+	 }
      
     while (feof(archivo) == 0) {     //Mientras que no sea el final del documento
         fgets(caracteres,30,archivo);//Toma caracter por caracter del archivo y lo almacena en caracteres
         
         if(feof(archivo) == 0)
-		printf("%s",caracteres);       
+		printf("\033[33m %s",caracteres);       
         }
         fclose(archivo);//Cierra el documento
         
@@ -258,55 +263,60 @@ int muestra( ){
 	 
 	 }
  
- 
- 
- 
-	int Comparar(char arr1[],char arr2[]){
-		int x=strlen(arr1);
-		int y=strlen(arr2);
-		int cont=0; 
-		if(x!=y-1){
-			return 0; // No se encuentra
-		}
-		else{
-			while(cont+1!=x){
-				if (arr1[cont]!=arr2[cont]){
-					//No se encuentra
-				return 0;
-								
-				}cont++;
-			} 
-			return 1; // El contacto se encuentra
-					
-		}
-	}
-	//Método para validar si el contacto que se desea agregar ya esta registrado 
-	int ValidaContacto(char usuario[]){
-		
+// Función para devolver la ip y el puerto asociado a un usuario
+	int lee(char usuario[]){
 		FILE *archivo;
+		char caracteres[30];
+              
+		int i=0;
+        archivo = fopen("listaContactos.txt","r");  // Se trata de abrir un archivo
+        			
+			if (archivo != NULL) {  // Si el archivo existe:
+			existe = 0;
+			while (feof(archivo) == 0)  // Recorre el archivo buscando el usuario solicitado
+			{
+					fgets(caracteres,30,archivo);
+					if(((Comparar(usuario,caracteres))==1)||(i>0)){
+						if(i==1)strcpy(ip,caracteres);           // Si se encuentra se copia la información correspondiente
+						if(i==2){strcpy(puerto,caracteres);      // el las variables globales para poder ser usadas por el socket
+						i=0;
+						existe = 1;   // Uso de manejo de IP y de usuarios no agregados
+						break;}
+						
+						i++;
+						}
+						
+			}
 		
-        char caracteres[30];
-        archivo = fopen("listaContactos.txt","r");
- 
-        if (archivo == NULL)
-                exit(1);
-                
-        while (feof(archivo) == 0)
-        {
-                fgets(caracteres,30,archivo);
-                if((Comparar(usuario,caracteres))==1){
-					printf("\nEl contacto ya se encuentra registrado. \n \n");
-					return 0;
-					}
-					}
+	}
+        if (existe != 1) {  // Si no existe permite al usuario comunicarse con el contacto solo si conoce su ip
+        printf("\033[33m El contacto no se encuentra, \n si conoce su IP y puerto digite 1, \n si no lo conoce digite 0\n");
+        int opcion;
+        scanf("%i", &opcion);
+        if (opcion == 1){ // Si el usuario conoce el puerto y la ip entonces puede conectarse
+ 			printf("Escriba el ip:");
+			scanf(" %s",ip);
+			printf("Escriba el puerto:");
+			scanf(" %s",puerto);
+        }
+        else { // Si no lo envia al menu principal
+			system("clear");
+			Menu ();
+		}}
         
+        if (archivo != NULL) 
         fclose(archivo);
-        return 1;
-		}
+        return 0;
+	 
+	 }
+
+// Función que agrega los amigos al txt.
 	
 	int Escribir( ){
 		FILE * archivo;
 		char* users = "listaContactos.txt";//Apunta al archivo en memoria
+		
+		// Se declaran variables
 		char user[30];
 		char ip[30];
 		char puerto[30];
@@ -331,42 +341,65 @@ int muestra( ){
 	return 0;
 		
 		}
-
-
-
-
 		
-	int Menu(){
-		printf("\033[0m Bienvenidos  al Sistema de comunicacion \n OPCIONES:\n 1)ENVIAR MENSAJES\n 2)LISTA DE AMIGOS \n 3)AGREGAR AMIGOS \n");
-		
-		int salir=0;
-		int opcion;
-		while(salir==0){
-			opcion=-1;
-			
-			
-			fflush(stdin);
-			scanf("%d",&opcion);
-			
-			if (opcion==1){
-				sockets();
-			Menu();}
-			else if (opcion==2){muestra();
-			muestra();
-			Menu();}
-			else if (opcion==3){Escribir();
-			Menu();
-			}
-			else exit(0);
+// Función auxiliar de la función lee en la cual se compara si el usuario ya existe
+
+int Comparar(char arr1[],char arr2[]){
+		int x=strlen(arr1);
+		int y=strlen(arr2);
+		int cont=0; 
+		if(x!=y-1){
+			return 0; // No se encuentra
 		}
-			return 0;
-		
+		else{
+			while(cont+1!=x){
+				if (arr1[cont]!=arr2[cont]){
+					//No se encuentra
+				return 0;
+								
+				}cont++;
+			} 
+			return 1; // El contacto se encuentra
+					
 		}
-	
-	
-	int main () {
-		
-		Menu ();
-		return 0;
 	}
+	
+	
+	//Método para validar si el contacto que se desea agregar ya esta registrado 
+	int ValidaContacto(char usuario[]){
+		
+		FILE *archivo;
+		
+        char caracteres[30];
+        archivo = fopen("listaContactos.txt","r");
+ 
+        if (archivo == NULL)
+                exit(1);
+                
+        while (feof(archivo) == 0) // Se recorre el archivo apra encontrar el usuario
+        {
+                fgets(caracteres,30,archivo);
+                if((Comparar(usuario,caracteres))==1){ // Si en aingun alinea del txt se encuentra muestra el mensaje en pantalla
+					printf("\nEl contacto ya se encuentra registrado. \n \n");
+					return 0;
+					}
+					}
+        
+        fclose(archivo);
+        return 1; // Si no se encuentra retorna 1 para indicar que se puede digitar el username
+		}
+	
+		
+	// Copia la ip para eliminar el \0 
+	void copiar(char ar1[], char ar2[]){ // Se reciben dos arreglos, el primer parametro se copia en el segundo
+	int x=strlen(ar1); // Se calcula el largo del arreglo para usarlo en el termino de parada del usuario
+	int i=0;
+	while(i<x-1){
+		 ar2[i] = ar1[i]; //Se hace la copia de los valores
+		 i++;
+		 }
+	}
+	
+	
+	
 
